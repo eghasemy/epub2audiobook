@@ -1,0 +1,29 @@
+# Custom pronunciation lexicon
+# Format: word    phonetic_spelling
+# Use this file to override default pronunciations for specific words
+# 
+# Examples:
+# route    /ruːt/
+# data     /ˈdeɪtə/
+# gif      /dʒɪf/
+# 
+# Note: Phonetic format depends on your TTS engine
+# Some engines use IPA, others use custom formats
+# Consult your TTS engine documentation for the correct format
+
+# Common words with multiple pronunciations
+route    root
+data     day-ta
+either   ee-ther
+neither  nee-ther
+
+# Technical terms
+SQL      sequel
+JSON     jay-son
+GitHub   git-hub
+API      ay-pee-eye
+
+# Names and places (add your specific ones here)
+# Example: 
+# Edinburgh    ed-in-bur-uh
+# Leicester    les-ter

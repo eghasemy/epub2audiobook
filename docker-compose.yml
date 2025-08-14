@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  # Optional: Calibre CLI in a tiny container for robust EPUB→MD
+  calibre:
+    image: linuxserver/calibre
+    volumes:
+      - ./data:/data
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "ebook-convert /data/input/book.epub /data/work/book.md \
+       --chapter '//*[(name()=\"h1\" or name()=\"h2\") and re:test(., \"chapter|prologue|epilogue|part\", \"i\")]' \
+       --keep-links --pretty-print"
+
+  # Studio-quality TTS (GPU). Swap in your preferred model server.
+  tts_gpu:
+    image: nvcr.io/nvidia/pytorch:24.01-py3
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./scripts:/workspace/scripts
+      - ./data:/workspace/data
+      - ./models:/workspace/models
+      - ./resources:/workspace/resources
+    working_dir: /workspace
+    command: ["python", "scripts/tts_generate.py", "--tier", "studio"]
+
+  # Fast CPU TTS
+  tts_cpu:
+    image: python:3.11-slim
+    volumes:
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./resources:/app/resources
+    working_dir: /app
+    command: ["python", "scripts/tts_generate.py", "--tier", "fast"]
+
+  # Post (mastering + packaging)
+  post:
+    image: python:3.11-slim
+    volumes:
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - ./resources:/app/resources
+    working_dir: /app
+    command: ["/bin/bash", "-lc", "python scripts/master_audio.py && python scripts/package_m4b.py"]
