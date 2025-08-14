@@ -13,8 +13,24 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
-from werkzeug.utils import secure_filename
+# Check for required dependencies with helpful error messages
+try:
+    from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
+    from werkzeug.utils import secure_filename
+except ImportError as e:
+    print("❌ Missing required dependencies!")
+    print("")
+    print("ERROR: " + str(e))
+    print("")
+    print("To fix this issue, run one of the following commands:")
+    print("  make install")
+    print("  pip install -r requirements.txt")
+    print("  ./start.sh")
+    print("")
+    print("For more help, see TROUBLESHOOTING.md")
+    print("")
+    exit(1)
+
 import threading
 
 # Import enhanced TTS functionality

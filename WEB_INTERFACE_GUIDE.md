@@ -66,8 +66,11 @@ docker-compose up epub2audiobook
 ```bash
 git clone https://github.com/eghasemy/epub2audiobook.git
 cd epub2audiobook
-./start.sh
+make install  # Install Python dependencies
+python app.py  # Start the web interface
 ```
+
+> **Build Error?** If you see `ModuleNotFoundError: No module named 'flask'`, the Python dependencies aren't installed. Run `make install` or `pip install -r requirements.txt` first. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for more help.
 
 ## 🖥️ Using the Web Interface
 
