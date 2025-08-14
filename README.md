@@ -31,6 +31,8 @@ make all  # or 'make fast' for CPU-only processing
 ls data/output/audiobook.m4b
 ```
 
+> **Having trouble?** See the [Troubleshooting Guide](TROUBLESHOOTING.md) for solutions to common setup and build issues.
+
 ## 📋 Prerequisites
 
 Before getting started, ensure you have:
