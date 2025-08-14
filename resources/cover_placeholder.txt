@@ -1,0 +1,11 @@
+# Cover Image Placeholder
+# 
+# This file serves as a placeholder for cover.jpg
+# Place your audiobook cover image here as cover.jpg
+# 
+# Recommended specifications:
+# - Format: JPG or PNG
+# - Dimensions: 300x400 pixels (or any 3:4 aspect ratio)
+# - File size: < 1MB
+# 
+# The cover will be embedded in the final M4B audiobook file

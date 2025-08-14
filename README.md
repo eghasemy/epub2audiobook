@@ -12,6 +12,36 @@ This guide shows you how to build a **fully local** EPUB→audiobook system that
 - Voice cloning (optional) & ethics note
 - Performance tips & QA checklist
 
+## 🚀 Quick Start
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/eghasemy/epub2audiobook.git
+cd epub2audiobook
+make setup
+make install
+
+# 2. Place your EPUB file
+cp your_book.epub data/input/book.epub
+
+# 3. Run the pipeline
+make all  # or 'make fast' for CPU-only processing
+
+# 4. Get your audiobook
+ls data/output/audiobook.m4b
+```
+
+## 📋 Prerequisites
+
+Before getting started, ensure you have:
+
+- **Python 3.10+** installed
+- **ffmpeg** for audio processing: `sudo apt install ffmpeg` (Linux) or `brew install ffmpeg` (macOS)
+- **Calibre** for EPUB conversion: `sudo apt install calibre` (Linux) or [download from calibre-ebook.com](https://calibre-ebook.com/download)
+- **Docker** (optional): For containerized processing
+
+For TTS models, you'll need to install additional packages. See the [TTS Setup](#-tts-model-setup) section.
+
 ---
 
 ## 1) Architecture Overview
@@ -315,5 +345,272 @@ concat.write_text("\n".join([f"file '{w.as_posix()}'" for w in wavs]))
 merged = pathlib.Path("data/work/book_merged.wav")
 subprocess.check_call(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-c","copy",str(merged)])
 
-# Chapters: s
+# Convert to M4B with chapters and metadata
+output_file = pathlib.Path("data/output/audiobook.m4b")
+output_file.parent.mkdir(parents=True, exist_ok=True)
+
+subprocess.check_call([
+    "ffmpeg", "-y",
+    "-i", str(merged),
+    "-c:a", "aac", "-b:a", "64k",
+    "-metadata", "title=Audiobook",
+    "-metadata", "artist=TTS Generated",
+    "-f", "mp4",
+    str(output_file)
+])
+
+print(f"M4B audiobook created: {output_file}")
 ```
+
+---
+
+## 🛠️ Usage Guide
+
+### Basic Usage
+
+The simplest way to convert an EPUB to audiobook:
+
+```bash
+# 1. Setup (one-time)
+make setup install
+
+# 2. Convert your book
+cp your_book.epub data/input/book.epub
+make all
+
+# 3. Find your audiobook
+ls data/output/audiobook.m4b
+```
+
+### Step-by-Step Usage
+
+For more control over the process:
+
+```bash
+# 1. Convert EPUB to Markdown
+make convert-epub EPUB_FILE=data/input/your_book.epub
+
+# 2. Clean and chunk text
+make clean-text
+
+# 3. Generate TTS audio
+make generate-tts TIER=studio VOICE=en_female_01
+
+# 4. Master audio (normalize volume, etc.)
+make master
+
+# 5. Package into M4B
+make package
+```
+
+### Configuration Options
+
+#### Voice and Quality Settings
+
+```bash
+# Use fast CPU TTS
+make fast
+
+# Use studio quality TTS
+make studio
+
+# Custom voice
+make all VOICE=en_male_02
+
+# Custom settings via Python scripts
+python scripts/tts_generate.py --tier studio --voice en_female_01 --rate 1.1 --pitch 0.2
+```
+
+#### Audio Processing Options
+
+```bash
+# Custom loudness target
+python scripts/master_audio.py --lufs -16 --deess
+
+# Custom output settings
+python scripts/package_m4b.py --title "My Book" --artist "Author Name" --bitrate 128k
+```
+
+### Docker Usage
+
+For isolated, reproducible processing:
+
+```bash
+# Setup
+cp your_book.epub data/input/book.epub
+
+# Run with Docker Compose
+docker-compose run --rm calibre    # Convert EPUB
+docker-compose run --rm tts_gpu    # Generate TTS (GPU)
+# OR
+docker-compose run --rm tts_cpu    # Generate TTS (CPU)
+docker-compose run --rm post       # Master and package
+```
+
+---
+
+## 🤖 TTS Model Setup
+
+The scripts include placeholder implementations for TTS models. You need to implement actual TTS loading for your chosen models:
+
+### Studio Quality (GPU) - XTTS Example
+
+1. Install dependencies:
+```bash
+pip install TTS torch
+```
+
+2. Download XTTS model and update `scripts/tts_generate.py`:
+```python
+def load_studio_model(model_dir, device="cuda"):
+    from TTS.api import TTS
+    tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+    return tts
+
+def synthesize(text: str):
+    # Process SSML tags
+    plain = BREAK.sub(" ", text)
+    plain = EMPH.sub(lambda m: m.group(2).upper() if m.group(1)=="strong" else m.group(2), plain)
+    
+    # Generate audio
+    wav = model.tts(plain, speaker_wav=args.ref_audio, language="en")
+    return wav
+```
+
+### Fast CPU - Piper Example
+
+1. Install Piper:
+```bash
+pip install piper-tts
+```
+
+2. Download model and update script:
+```python
+def load_fast_model(model_dir, device="cpu"):
+    import piper
+    return piper.PiperVoice.load(f"{model_dir}/en_US-lessac-medium.onnx")
+
+def synthesize(text: str):
+    plain = BREAK.sub(" ", text)
+    plain = EMPH.sub(lambda m: m.group(2), plain)
+    
+    wav = model.synthesize(plain)
+    return wav
+```
+
+---
+
+## 📁 Directory Structure
+
+After setup, your project will look like:
+
+```
+epub2audiobook/
+├── README.md              # This file
+├── Makefile              # Pipeline automation
+├── docker-compose.yml   # Container setup
+├── requirements.txt      # Python dependencies
+├── .env.template        # Environment variables template
+├── .gitignore           # Git ignore patterns
+├── scripts/             # Pipeline scripts
+│   ├── epub_to_md.py
+│   ├── clean_and_chunk.py
+│   ├── tts_generate.py
+│   ├── master_audio.py
+│   └── package_m4b.py
+├── data/                # Working directories
+│   ├── input/           # Place EPUB files here
+│   ├── work/            # Temporary processing files
+│   └── output/          # Final audiobooks
+├── models/              # TTS model files (not in repo)
+│   ├── studio/          # High-quality models
+│   └── fast/            # Fast CPU models
+└── resources/           # Configuration files
+    ├── abbreviations.yml
+    ├── lexicon_user.txt
+    └── cover_placeholder.txt
+```
+
+---
+
+## 🎛️ Customization
+
+### Abbreviations and Pronunciations
+
+Edit `resources/abbreviations.yml` to expand abbreviations:
+```yaml
+"Dr.": "Doctor"
+"API": "A P I"
+"URL": "U R L"
+```
+
+Edit `resources/lexicon_user.txt` for custom pronunciations:
+```
+route    root
+data     day-ta
+GitHub   git-hub
+```
+
+### Audio Settings
+
+- **Chunk size**: Adjust `--max_chars` in clean_and_chunk.py
+- **Loudness**: Modify `--lufs` in master_audio.py
+- **Bitrate**: Change `--bitrate` in package_m4b.py
+
+### SSML-like Processing
+
+The system adds automatic pauses:
+- 1200ms + 800ms around headings
+- 250ms after paragraphs
+- Emphasis tags for strong text
+
+---
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**"ebook-convert command not found"**
+```bash
+# Install Calibre
+sudo apt install calibre  # Linux
+brew install calibre      # macOS
+```
+
+**"ffmpeg command not found"**
+```bash
+# Install ffmpeg
+sudo apt install ffmpeg  # Linux
+brew install ffmpeg      # macOS
+```
+
+**TTS model errors**
+- Ensure you've implemented actual TTS loading in `scripts/tts_generate.py`
+- Check GPU memory if using CUDA models
+- Verify model files are in the correct `models/` subdirectories
+
+**Audio processing failures**
+- Ensure ffmpeg is installed and in PATH
+- Check input audio file formats are supported
+- Verify sufficient disk space in `data/work/`
+
+### Performance Tips
+
+- Use SSD storage for faster processing
+- Increase chunk size for longer audio segments
+- Use GPU acceleration for studio quality
+- Process multiple books in parallel with different Docker containers
+
+---
+
+## 📄 License
+
+This project is open source. See the repository for license details.
+
+## 🤝 Contributing
+
+Contributions welcome! Please read the contributing guidelines and submit pull requests.
+
+---
+
+*Built with ❤️ for audiobook enthusiasts who value privacy and control over their content.*
