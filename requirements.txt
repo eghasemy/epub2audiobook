@@ -4,6 +4,14 @@ PyYAML>=6.0
 tqdm>=4.64.0
 soundfile>=0.12.1
 
+# Web interface
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# Enhanced TTS and model management
+huggingface-hub>=0.16.0
+requests>=2.28.0
+
 # Optional TTS engine dependencies (uncomment as needed)
 # TTS>=0.20.0                    # Coqui TTS for XTTS models
 # torch>=1.13.0                 # PyTorch for neural TTS models

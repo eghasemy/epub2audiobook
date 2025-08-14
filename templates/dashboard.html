@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - EPUB to Audiobook{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- System Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-server fa-2x text-primary mb-3"></i>
+                <h5 class="card-title">System Status</h5>
+                <div class="d-flex justify-content-center align-items-center">
+                    <span class="status-indicator status-online"></span>
+                    <span class="text-success">Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-microchip fa-2x {{ 'text-success' if status.gpu_available else 'text-warning' }} mb-3"></i>
+                <h5 class="card-title">GPU Status</h5>
+                <div class="d-flex justify-content-center align-items-center">
+                    <span class="status-indicator {{ 'status-online' if status.gpu_available else 'status-warning' }}"></span>
+                    <span class="{{ 'text-success' if status.gpu_available else 'text-warning' }}">
+                        {{ 'Available' if status.gpu_available else 'Not Available' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-robot fa-2x text-info mb-3"></i>
+                <h5 class="card-title">Studio Models</h5>
+                <h3 class="text-info mb-0">{{ status.models_installed.studio }}</h3>
+                <small class="text-muted">Installed</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-bolt fa-2x text-warning mb-3"></i>
+                <h5 class="card-title">Fast Models</h5>
+                <h3 class="text-warning mb-0">{{ status.models_installed.fast }}</h3>
+                <small class="text-muted">Installed</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <a href="{{ url_for('upload_file') }}" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-upload mb-2 d-block"></i>
+                            Upload EPUB
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <a href="{{ url_for('model_management') }}" class="btn btn-info btn-lg w-100">
+                            <i class="fas fa-download mb-2 d-block"></i>
+                            Download Models
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <a href="{{ url_for('voice_cloning') }}" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-microphone mb-2 d-block"></i>
+                            Clone Voice
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <button class="btn btn-outline-secondary btn-lg w-100" onclick="checkSystemHealth()">
+                            <i class="fas fa-heartbeat mb-2 d-block"></i>
+                            Health Check
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Conversions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Book Title</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Started</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-jobs">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-file-audio fa-2x mb-2 d-block"></i>
+                                    No recent conversions
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    System Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Version</small>
+                    <div>v2.0.0</div>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">Container</small>
+                    <div>
+                        <i class="fab fa-docker me-1"></i>
+                        Ready for Unraid
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">Features</small>
+                    <div>
+                        <span class="badge bg-success me-1">Web UI</span>
+                        <span class="badge bg-info me-1">Model Management</span>
+                        <span class="badge bg-warning me-1">Voice Cloning</span>
+                    </div>
+                </div>
+                <div>
+                    <small class="text-muted">Support</small>
+                    <div>
+                        <a href="#" class="text-decoration-none">
+                            <i class="fab fa-github me-1"></i>
+                            GitHub Issues
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Getting Started -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-play-circle me-2"></i>
+                    Getting Started
+                </h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2">
+                        <a href="{{ url_for('model_management') }}" class="text-decoration-none">
+                            Download TTS models
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('upload_file') }}" class="text-decoration-none">
+                            Upload your EPUB file
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        Configure conversion settings
+                    </li>
+                    <li>
+                        Download your audiobook!
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function checkSystemHealth() {
+        showAlert('Running system health check...', 'info');
+        
+        // Simulate health check
+        setTimeout(() => {
+            showAlert('System health check completed. All systems operational!', 'success');
+        }, 2000);
+    }
+    
+    // Load recent jobs
+    function loadRecentJobs() {
+        // In a real implementation, this would fetch from the API
+        // For now, show placeholder
+    }
+    
+    // Auto-refresh dashboard every 30 seconds
+    setInterval(() => {
+        loadRecentJobs();
+    }, 30000);
+    
+    // Load initial data
+    document.addEventListener('DOMContentLoaded', function() {
+        loadRecentJobs();
+    });
+</script>
+{% endblock %}

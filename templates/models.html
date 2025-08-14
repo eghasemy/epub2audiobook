@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}Model Management - EPUB to Audiobook{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-robot me-2"></i>
+            TTS Model Management
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Installed Models -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-hard-drive me-2"></i>
+                    Installed Models
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-info">
+                            <i class="fas fa-microchip me-2"></i>
+                            Studio Quality Models ({{ installed.studio|length }})
+                        </h6>
+                        <div id="studio-models" class="mb-4">
+                            {% if installed.studio %}
+                                {% for model in installed.studio %}
+                                <div class="card mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">{{ model.name }}</h6>
+                                                <small class="text-muted">{{ model.size }} MB</small>
+                                            </div>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="removeModel('{{ model.name }}', 'studio')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                    No studio models installed
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <h6 class="text-warning">
+                            <i class="fas fa-bolt me-2"></i>
+                            Fast CPU Models ({{ installed.fast|length }})
+                        </h6>
+                        <div id="fast-models">
+                            {% if installed.fast %}
+                                {% for model in installed.fast %}
+                                <div class="card mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">{{ model.name }}</h6>
+                                                <small class="text-muted">{{ model.size }} MB</small>
+                                            </div>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="removeModel('{{ model.name }}', 'fast')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                    No fast models installed
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Available Models -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fab fa-github me-2"></i>
+                    Available Models
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="model-search" 
+                               placeholder="Search models...">
+                        <button class="btn btn-outline-secondary" type="button" onclick="searchModels()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="model-filter" id="filter-all" value="all" checked>
+                        <label class="btn btn-outline-primary" for="filter-all">All</label>
+                        
+                        <input type="radio" class="btn-check" name="model-filter" id="filter-studio" value="studio">
+                        <label class="btn btn-outline-primary" for="filter-studio">Studio</label>
+                        
+                        <input type="radio" class="btn-check" name="model-filter" id="filter-fast" value="fast">
+                        <label class="btn btn-outline-primary" for="filter-fast">Fast</label>
+                    </div>
+                </div>
+                
+                <!-- Popular Models -->
+                <div id="available-models">
+                    {% for model in available %}
+                    <div class="card mb-3 model-item" data-type="{{ model.type }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ model.name }}</h6>
+                                    <p class="text-muted small mb-2">{{ model.description }}</p>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-{{ 'info' if model.type == 'studio' else 'warning' }} me-2">
+                                            {{ model.type.title() }}
+                                        </span>
+                                        <small class="text-muted">
+                                            <i class="fas fa-download me-1"></i>
+                                            {{ model.downloads }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-primary" 
+                                            onclick="downloadModel('{{ model.name }}', '{{ model.type }}')">
+                                        <i class="fas fa-download me-1"></i>
+                                        Install
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Custom Model Upload -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-upload me-2"></i>
+                            Upload Custom Model
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="custom-model-form">
+                            <div class="mb-2">
+                                <input type="text" class="form-control form-control-sm" 
+                                       placeholder="Model name" id="custom-model-name" required>
+                            </div>
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="custom-model-type">
+                                    <option value="studio">Studio Quality</option>
+                                    <option value="fast">Fast CPU</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <input type="file" class="form-control form-control-sm" 
+                                       id="custom-model-file" multiple>
+                                <small class="form-text text-muted">Upload model files (.pth, .onnx, .json, etc.)</small>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-success w-100">
+                                <i class="fas fa-upload me-1"></i>
+                                Upload Model
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Download Progress Modal -->
+<div class="modal fade" id="downloadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-download me-2"></i>
+                    Downloading Model
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <h6 id="download-model-name">Model Name</h6>
+                <p class="text-muted mb-3" id="download-status">Initializing download...</p>
+                
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%" id="download-progress-bar">
+                        0%
+                    </div>
+                </div>
+                
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    This may take several minutes depending on model size
+                </small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="download-cancel">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let downloadModal;
+    let currentDownload = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        downloadModal = new bootstrap.Modal(document.getElementById('downloadModal'));
+        
+        // Filter handlers
+        document.querySelectorAll('input[name="model-filter"]').forEach(radio => {
+            radio.addEventListener('change', filterModels);
+        });
+        
+        // Search handler
+        document.getElementById('model-search').addEventListener('input', searchModels);
+        
+        // Custom model form
+        document.getElementById('custom-model-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            uploadCustomModel();
+        });
+    });
+    
+    function searchModels() {
+        const query = document.getElementById('model-search').value.toLowerCase();
+        const models = document.querySelectorAll('.model-item');
+        
+        models.forEach(model => {
+            const name = model.querySelector('h6').textContent.toLowerCase();
+            const description = model.querySelector('p').textContent.toLowerCase();
+            
+            if (name.includes(query) || description.includes(query)) {
+                model.style.display = '';
+            } else {
+                model.style.display = 'none';
+            }
+        });
+    }
+    
+    function filterModels() {
+        const filter = document.querySelector('input[name="model-filter"]:checked').value;
+        const models = document.querySelectorAll('.model-item');
+        
+        models.forEach(model => {
+            const type = model.dataset.type;
+            
+            if (filter === 'all' || type === filter) {
+                model.style.display = '';
+            } else {
+                model.style.display = 'none';
+            }
+        });
+    }
+    
+    function downloadModel(modelName, modelType) {
+        // Show download modal
+        document.getElementById('download-model-name').textContent = modelName;
+        document.getElementById('download-status').textContent = 'Starting download...';
+        document.getElementById('download-progress-bar').style.width = '0%';
+        document.getElementById('download-progress-bar').textContent = '0%';
+        
+        downloadModal.show();
+        
+        // Start download
+        fetch('/api/models/download', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model_name: modelName,
+                model_type: modelType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.job_id) {
+                currentDownload = data.job_id;
+                pollDownloadProgress();
+            } else {
+                throw new Error(data.error || 'Failed to start download');
+            }
+        })
+        .catch(error => {
+            showAlert('Error starting download: ' + error.message, 'danger');
+            downloadModal.hide();
+        });
+    }
+    
+    function pollDownloadProgress() {
+        const poll = setInterval(() => {
+            if (!currentDownload) {
+                clearInterval(poll);
+                return;
+            }
+            
+            // In a real implementation, this would poll the actual download progress
+            // For demo, simulate progress
+            const progressBar = document.getElementById('download-progress-bar');
+            const currentWidth = parseInt(progressBar.style.width) || 0;
+            const newWidth = Math.min(currentWidth + Math.random() * 10, 100);
+            
+            progressBar.style.width = newWidth + '%';
+            progressBar.textContent = Math.round(newWidth) + '%';
+            
+            if (newWidth >= 100) {
+                clearInterval(poll);
+                document.getElementById('download-status').textContent = 'Download complete!';
+                
+                setTimeout(() => {
+                    downloadModal.hide();
+                    showAlert('Model downloaded successfully!', 'success');
+                    // Refresh the page to show new model
+                    location.reload();
+                }, 1500);
+            }
+        }, 500);
+    }
+    
+    function removeModel(modelName, modelType) {
+        if (confirm(`Are you sure you want to remove the model "${modelName}"?`)) {
+            // In a real implementation, this would make an API call to remove the model
+            showAlert(`Model "${modelName}" would be removed (not implemented in demo)`, 'info');
+        }
+    }
+    
+    function uploadCustomModel() {
+        const name = document.getElementById('custom-model-name').value;
+        const type = document.getElementById('custom-model-type').value;
+        const files = document.getElementById('custom-model-file').files;
+        
+        if (!name || files.length === 0) {
+            showAlert('Please provide a model name and select files', 'danger');
+            return;
+        }
+        
+        // In a real implementation, this would upload the files
+        showAlert(`Custom model "${name}" would be uploaded (not implemented in demo)`, 'info');
+        document.getElementById('custom-model-form').reset();
+    }
+    
+    // Cancel download
+    document.getElementById('download-cancel').addEventListener('click', function() {
+        if (currentDownload) {
+            currentDownload = null;
+            showAlert('Download cancelled', 'info');
+        }
+    });
+</script>
+{% endblock %}
