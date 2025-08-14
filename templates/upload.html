@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Book - EPUB to Audiobook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    Upload EPUB Book
+                </h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                    <div class="mb-4">
+                        <label for="file" class="form-label">Choose EPUB File</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".epub" required>
+                        <div class="form-text">
+                            Select an EPUB file to convert to audiobook. Maximum file size: 100MB
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Area -->
+                    <div class="upload-area border border-2 border-dashed border-secondary rounded p-4 text-center mb-4" 
+                         ondrop="dropHandler(event);" ondragover="dragOverHandler(event);" ondragleave="dragLeaveHandler(event);">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drag and drop your EPUB file here</h5>
+                        <p class="text-muted mb-3">or click the button below to browse</p>
+                        <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file').click()">
+                            <i class="fas fa-folder-open me-2"></i>
+                            Browse Files
+                        </button>
+                    </div>
+                    
+                    <!-- File Information -->
+                    <div id="file-info" class="alert alert-info d-none">
+                        <h6><i class="fas fa-file me-2"></i>Selected File:</h6>
+                        <div id="file-details"></div>
+                    </div>
+                    
+                    <!-- Upload Progress -->
+                    <div id="upload-progress" class="d-none mb-3">
+                        <label class="form-label">Upload Progress</label>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="upload-btn">
+                            <i class="fas fa-upload me-2"></i>
+                            Upload and Continue
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Upload Help
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Supported Formats</h6>
+                        <ul class="list-unstyled ms-3">
+                            <li><i class="fas fa-file me-2"></i>EPUB (.epub)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle text-info me-2"></i>Requirements</h6>
+                        <ul class="list-unstyled ms-3">
+                            <li><i class="fas fa-weight me-2"></i>Max size: 100MB</li>
+                            <li><i class="fas fa-language me-2"></i>UTF-8 encoding</li>
+                            <li><i class="fas fa-shield-alt me-2"></i>DRM-free</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6><i class="fas fa-lightbulb text-warning me-2"></i>Tips for Best Results</h6>
+                <ul class="mb-0">
+                    <li>Ensure your EPUB file has proper chapter structure</li>
+                    <li>Remove any DRM protection before uploading</li>
+                    <li>Books with complex formatting may need manual review</li>
+                    <li>Large files may take longer to process</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // File input change handler
+    document.getElementById('file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            showFileInfo(file);
+        }
+    });
+    
+    // Drag and drop handlers
+    function dragOverHandler(ev) {
+        ev.preventDefault();
+        const uploadArea = ev.currentTarget;
+        uploadArea.classList.add('border-primary', 'bg-light');
+    }
+    
+    function dragLeaveHandler(ev) {
+        ev.preventDefault();
+        const uploadArea = ev.currentTarget;
+        uploadArea.classList.remove('border-primary', 'bg-light');
+    }
+    
+    function dropHandler(ev) {
+        ev.preventDefault();
+        const uploadArea = ev.currentTarget;
+        uploadArea.classList.remove('border-primary', 'bg-light');
+        
+        const files = ev.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.toLowerCase().endsWith('.epub')) {
+                document.getElementById('file').files = files;
+                showFileInfo(file);
+            } else {
+                showAlert('Please select an EPUB file.', 'danger');
+            }
+        }
+    }
+    
+    function showFileInfo(file) {
+        const fileInfo = document.getElementById('file-info');
+        const fileDetails = document.getElementById('file-details');
+        
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        const lastModified = new Date(file.lastModified).toLocaleDateString();
+        
+        fileDetails.innerHTML = `
+            <div class="row">
+                <div class="col-sm-6">
+                    <strong>Name:</strong> ${file.name}
+                </div>
+                <div class="col-sm-6">
+                    <strong>Size:</strong> ${sizeInMB} MB
+                </div>
+                <div class="col-sm-6">
+                    <strong>Type:</strong> ${file.type || 'application/epub+zip'}
+                </div>
+                <div class="col-sm-6">
+                    <strong>Modified:</strong> ${lastModified}
+                </div>
+            </div>
+        `;
+        
+        fileInfo.classList.remove('d-none');
+        
+        // Check file size
+        if (file.size > 100 * 1024 * 1024) {
+            showAlert('File size exceeds 100MB limit. Please choose a smaller file.', 'danger');
+            document.getElementById('upload-btn').disabled = true;
+        } else {
+            document.getElementById('upload-btn').disabled = false;
+        }
+    }
+    
+    // Form submission with progress
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('file');
+        if (!fileInput.files[0]) {
+            e.preventDefault();
+            showAlert('Please select a file to upload.', 'danger');
+            return;
+        }
+        
+        // Show upload progress
+        const progressContainer = document.getElementById('upload-progress');
+        const progressBar = progressContainer.querySelector('.progress-bar');
+        const uploadBtn = document.getElementById('upload-btn');
+        
+        progressContainer.classList.remove('d-none');
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+        
+        // Simulate progress (in real implementation, use XMLHttpRequest or fetch for real progress)
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = Math.round(progress) + '%';
+            
+            if (progress >= 90) {
+                clearInterval(interval);
+                progressBar.textContent = 'Processing...';
+            }
+        }, 200);
+    });
+</script>
+{% endblock %}

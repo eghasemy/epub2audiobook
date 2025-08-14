@@ -1,9 +1,34 @@
 version: "3.9"
 
 services:
+  # Main web application
+  epub2audiobook:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: epub2audiobook
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./resources:/app/resources
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=5000
+    networks:
+      - epub2audiobook-net
+    labels:
+      - "net.unraid.docker.managed=dockerman"
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/eghasemy/epub2audiobook/main/resources/icon.png"
+
   # Optional: Calibre CLI in a tiny container for robust EPUB→MD
   calibre:
     image: linuxserver/calibre
+    container_name: epub2audiobook-calibre
     volumes:
       - ./data:/data
     entrypoint: ["/bin/sh", "-lc"]
@@ -11,10 +36,15 @@ services:
       "ebook-convert /data/input/book.epub /data/work/book.md \
        --chapter '//*[(name()=\"h1\" or name()=\"h2\") and re:test(., \"chapter|prologue|epilogue|part\", \"i\")]' \
        --keep-links --pretty-print"
+    networks:
+      - epub2audiobook-net
+    profiles:
+      - tools
 
   # Studio-quality TTS (GPU). Swap in your preferred model server.
   tts_gpu:
     image: nvcr.io/nvidia/pytorch:24.01-py3
+    container_name: epub2audiobook-tts-gpu
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
@@ -25,10 +55,15 @@ services:
       - ./resources:/workspace/resources
     working_dir: /workspace
     command: ["python", "scripts/tts_generate.py", "--tier", "studio"]
+    networks:
+      - epub2audiobook-net
+    profiles:
+      - gpu
 
   # Fast CPU TTS
   tts_cpu:
     image: python:3.11-slim
+    container_name: epub2audiobook-tts-cpu
     volumes:
       - ./scripts:/app/scripts
       - ./data:/app/data
@@ -36,13 +71,32 @@ services:
       - ./resources:/app/resources
     working_dir: /app
     command: ["python", "scripts/tts_generate.py", "--tier", "fast"]
+    networks:
+      - epub2audiobook-net
+    profiles:
+      - cpu
 
   # Post (mastering + packaging)
   post:
     image: python:3.11-slim
+    container_name: epub2audiobook-post
     volumes:
       - ./scripts:/app/scripts
       - ./data:/app/data
       - ./resources:/app/resources
     working_dir: /app
     command: ["/bin/bash", "-lc", "python scripts/master_audio.py && python scripts/package_m4b.py"]
+    networks:
+      - epub2audiobook-net
+    profiles:
+      - tools
+
+networks:
+  epub2audiobook-net:
+    driver: bridge
+
+volumes:
+  epub2audiobook-data:
+    driver: local
+  epub2audiobook-models:
+    driver: local

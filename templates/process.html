@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Process Book - EPUB to Audiobook{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-cogs me-2"></i>
+            Process: {{ filename }}
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Configuration Panel -->
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>
+                    Conversion Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="conversion-form">
+                    <input type="hidden" id="filename" value="{{ filename }}">
+                    
+                    <!-- TTS Tier Selection -->
+                    <div class="mb-3">
+                        <label class="form-label">TTS Quality</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tier" value="studio" id="tier-studio" checked>
+                            <label class="form-check-label" for="tier-studio">
+                                <strong>Studio Quality</strong>
+                                <small class="d-block text-muted">
+                                    <i class="fas fa-microchip me-1"></i>
+                                    GPU required • Best quality
+                                </small>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tier" value="fast" id="tier-fast">
+                            <label class="form-check-label" for="tier-fast">
+                                <strong>Fast CPU</strong>
+                                <small class="d-block text-muted">
+                                    <i class="fas fa-bolt me-1"></i>
+                                    CPU only • Good quality
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Voice Selection -->
+                    <div class="mb-3">
+                        <label for="voice-select" class="form-label">Voice</label>
+                        <select class="form-select" id="voice-select" name="voice">
+                            {% for voice in voices %}
+                            <option value="{{ voice.id }}">{{ voice.name }} ({{ voice.language }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Voice Cloning -->
+                    <div class="mb-3">
+                        <label class="form-label">Voice Cloning</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="use-voice-cloning" name="use_voice_cloning">
+                            <label class="form-check-label" for="use-voice-cloning">
+                                Use custom voice clone
+                            </label>
+                        </div>
+                        <div id="voice-clone-options" class="mt-2 d-none">
+                            <input type="file" class="form-control form-control-sm" id="reference-audio" 
+                                   accept="audio/*" placeholder="Reference audio file">
+                            <small class="form-text text-muted">Upload 10-30 seconds of clean speech</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Settings -->
+                    <div class="mb-3">
+                        <button class="btn btn-outline-secondary btn-sm w-100" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#advanced-settings">
+                            <i class="fas fa-cog me-2"></i>Advanced Settings
+                        </button>
+                        
+                        <div class="collapse mt-3" id="advanced-settings">
+                            <div class="mb-2">
+                                <label for="speech-rate" class="form-label">Speech Rate</label>
+                                <input type="range" class="form-range" id="speech-rate" 
+                                       min="0.5" max="2.0" step="0.1" value="1.0">
+                                <small class="text-muted">Speed: <span id="rate-value">1.0</span>x</small>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="pitch" class="form-label">Pitch Adjustment</label>
+                                <input type="range" class="form-range" id="pitch" 
+                                       min="-12" max="12" step="1" value="0">
+                                <small class="text-muted">Pitch: <span id="pitch-value">0</span> semitones</small>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label for="chunk-size" class="form-label">Chunk Size</label>
+                                <select class="form-select form-select-sm" id="chunk-size">
+                                    <option value="800">Small (800 chars)</option>
+                                    <option value="1200" selected>Medium (1200 chars)</option>
+                                    <option value="1600">Large (1600 chars)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="start-conversion">
+                            <i class="fas fa-play me-2"></i>
+                            Start Conversion
+                        </button>
+                        <a href="{{ url_for('upload_file') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Upload Different File
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Progress Panel -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tasks me-2"></i>
+                    Conversion Progress
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Pre-conversion Info -->
+                <div id="pre-conversion" class="text-center py-5">
+                    <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+                    <h4>Ready to Convert</h4>
+                    <p class="text-muted mb-4">
+                        Configure your settings on the left and click "Start Conversion" when ready.
+                    </p>
+                    
+                    <!-- Book Preview -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6><i class="fas fa-book me-2"></i>Book Information</h6>
+                            <div class="row text-start">
+                                <div class="col-sm-6">
+                                    <small class="text-muted">Filename:</small>
+                                    <div class="fw-bold">{{ filename }}</div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted">Format:</small>
+                                    <div>EPUB</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Conversion Progress -->
+                <div id="conversion-progress" class="d-none">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="progress-circle mx-auto" style="--progress: 0%">
+                                <div class="progress-text">0%</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 id="current-step">Starting conversion...</h5>
+                            <p class="text-muted mb-2" id="step-description">
+                                Initializing the conversion process
+                            </p>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                <span id="elapsed-time">0:00</span> elapsed
+                                • <span id="eta">Calculating...</span> remaining
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Step Progress -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="list-group">
+                                <div class="list-group-item d-flex justify-content-between align-items-center" id="step-epub">
+                                    <div>
+                                        <i class="fas fa-file-export me-2"></i>
+                                        Extract EPUB Content
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">Pending</span>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center" id="step-clean">
+                                    <div>
+                                        <i class="fas fa-broom me-2"></i>
+                                        Clean and Chunk Text
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">Pending</span>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center" id="step-tts">
+                                    <div>
+                                        <i class="fas fa-microphone me-2"></i>
+                                        Generate TTS Audio
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">Pending</span>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center" id="step-master">
+                                    <div>
+                                        <i class="fas fa-sliders-h me-2"></i>
+                                        Master Audio
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">Pending</span>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center" id="step-package">
+                                    <div>
+                                        <i class="fas fa-box me-2"></i>
+                                        Package Audiobook
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">Pending</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Completion -->
+                <div id="conversion-complete" class="d-none text-center py-5">
+                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                    <h4>Conversion Complete!</h4>
+                    <p class="text-muted mb-4">Your audiobook has been successfully created.</p>
+                    
+                    <div class="d-grid gap-2 d-md-block">
+                        <button class="btn btn-primary btn-lg" id="download-audiobook">
+                            <i class="fas fa-download me-2"></i>
+                            Download Audiobook
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-home me-2"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let conversionJob = null;
+    let startTime = null;
+    
+    // Form handlers
+    document.getElementById('use-voice-cloning').addEventListener('change', function() {
+        const options = document.getElementById('voice-clone-options');
+        if (this.checked) {
+            options.classList.remove('d-none');
+        } else {
+            options.classList.add('d-none');
+        }
+    });
+    
+    // Range input handlers
+    document.getElementById('speech-rate').addEventListener('input', function() {
+        document.getElementById('rate-value').textContent = this.value;
+    });
+    
+    document.getElementById('pitch').addEventListener('input', function() {
+        document.getElementById('pitch-value').textContent = this.value;
+    });
+    
+    // Form submission
+    document.getElementById('conversion-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        startConversion();
+    });
+    
+    function startConversion() {
+        const formData = new FormData(document.getElementById('conversion-form'));
+        const settings = {
+            tier: formData.get('tier'),
+            voice: formData.get('voice'),
+            rate: document.getElementById('speech-rate').value,
+            pitch: document.getElementById('pitch').value,
+            chunk_size: document.getElementById('chunk-size').value,
+            use_voice_cloning: document.getElementById('use-voice-cloning').checked
+        };
+        
+        const filename = document.getElementById('filename').value;
+        
+        // Hide pre-conversion, show progress
+        document.getElementById('pre-conversion').classList.add('d-none');
+        document.getElementById('conversion-progress').classList.remove('d-none');
+        
+        // Start timer
+        startTime = Date.now();
+        const timer = setInterval(updateTimer, 1000);
+        
+        // Make API call to start conversion
+        fetch('/api/convert', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: filename,
+                settings: settings
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.job_id) {
+                conversionJob = data.job_id;
+                pollProgress(timer);
+            } else {
+                throw new Error(data.error || 'Failed to start conversion');
+            }
+        })
+        .catch(error => {
+            clearInterval(timer);
+            showAlert('Error starting conversion: ' + error.message, 'danger');
+            resetUI();
+        });
+    }
+    
+    function pollProgress(timer) {
+        const poll = setInterval(() => {
+            fetch(`/api/jobs/${conversionJob}/status`)
+            .then(response => response.json())
+            .then(data => {
+                updateProgress(data);
+                
+                if (data.status === 'completed') {
+                    clearInterval(poll);
+                    clearInterval(timer);
+                    showCompletion();
+                } else if (data.status === 'failed') {
+                    clearInterval(poll);
+                    clearInterval(timer);
+                    showAlert('Conversion failed: ' + (data.error || 'Unknown error'), 'danger');
+                    resetUI();
+                }
+            })
+            .catch(error => {
+                console.error('Error polling progress:', error);
+            });
+        }, 2000);
+    }
+    
+    function updateProgress(data) {
+        // Update overall progress
+        const progressCircle = document.querySelector('.progress-circle');
+        const progressText = document.querySelector('.progress-text');
+        
+        if (progressCircle && progressText) {
+            updateProgress(progressCircle, data.progress || 0);
+        }
+        
+        // Update current step
+        document.getElementById('current-step').textContent = data.current_step || 'Processing...';
+        document.getElementById('step-description').textContent = data.step_description || '';
+        document.getElementById('eta').textContent = data.estimated_time_remaining || 'Calculating...';
+        
+        // Update step badges (simplified for demo)
+        const steps = ['epub', 'clean', 'tts', 'master', 'package'];
+        const currentProgress = data.progress || 0;
+        
+        steps.forEach((step, index) => {
+            const stepElement = document.getElementById(`step-${step}`);
+            const badge = stepElement.querySelector('.badge');
+            const stepProgress = (index + 1) * 20;
+            
+            if (currentProgress >= stepProgress) {
+                badge.className = 'badge bg-success rounded-pill';
+                badge.textContent = 'Complete';
+            } else if (currentProgress >= stepProgress - 20) {
+                badge.className = 'badge bg-primary rounded-pill';
+                badge.textContent = 'Running';
+            }
+        });
+    }
+    
+    function updateTimer() {
+        if (startTime) {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('elapsed-time').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }
+    
+    function showCompletion() {
+        document.getElementById('conversion-progress').classList.add('d-none');
+        document.getElementById('conversion-complete').classList.remove('d-none');
+    }
+    
+    function resetUI() {
+        document.getElementById('conversion-progress').classList.add('d-none');
+        document.getElementById('pre-conversion').classList.remove('d-none');
+        document.getElementById('conversion-complete').classList.add('d-none');
+    }
+    
+    // Download handler
+    document.getElementById('download-audiobook').addEventListener('click', function() {
+        // In a real implementation, this would download the generated audiobook
+        showAlert('Download would start here (not implemented in demo)', 'info');
+    });
+</script>
+{% endblock %}
